@@ -80,7 +80,7 @@
   /* Music Panel */
   .music-panel {
     width: 500px;
-    height: 500px;
+    height: 550px;
     margin: 40px auto;
     border-radius: 20px;
     background: linear-gradient(to bottom right, darkmagenta, deeppink);
@@ -122,7 +122,7 @@
 
   .song-header { display: flex; justify-content: space-between; align-items: center; }
 
-  .play-btn {
+  .play-btn, .shuffle-btn, .repeat-btn {
     background: rgba(255,255,255,0.2);
     border: none;
     border-radius: 50%;
@@ -134,9 +134,10 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    margin-left: 5px;
   }
 
-  .play-btn:hover { background: rgba(255,255,255,0.4); }
+  .play-btn:hover, .shuffle-btn:hover, .repeat-btn:hover { background: rgba(255,255,255,0.4); }
 
   .progress-container {
     width: 100%;
@@ -162,6 +163,8 @@
   }
 
   .volume-slider { width: 100%; margin-top: 5px; }
+
+  .controls { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
 </style>
 </head>
 <body>
@@ -183,6 +186,10 @@
   <p id="musicDescription"></p>
 
   <div class="music-panel">
+    <div class="controls">
+      <button id="shuffleBtn" class="shuffle-btn">🔀</button>
+      <button id="repeatBtn" class="repeat-btn">🔁</button>
+    </div>
     <input type="text" id="musicSearch" placeholder="Search for a song..." />
     <div id="songList"></div>
   </div>
@@ -231,7 +238,7 @@ musicBtn.addEventListener("click", () => {
   homeSection.classList.remove("active");
 });
 
-// Songs data (16 songs)
+// Songs data
 const songs = [
   { name: "Bodypartz", url: "https://dl.dropboxusercontent.com/scl/fi/ld3g9d2z2rkrmxgodl8na/bodypartz.mp3?rlkey=7rphj1m3dxyk204e71gdqt9lm&st=a88lgsrm&dl=0" },
   { name: "Hey", url: "https://dl.dropboxusercontent.com/scl/fi/fuvg6qylevnu3vnu2aqgd/hey.mp3?rlkey=uevxtq793bz7y4smywp75wkep&st=4bej6pp5&dl=0" },
@@ -248,10 +255,15 @@ const songs = [
   { name: "Popular", url: "https://dl.dropboxusercontent.com/scl/fi/2mez2itq3440o9cmtigbb/P.mp3?rlkey=s1krupfb8zh8v4l90p2qsbcez&st=2pg1ndib&dl=0" },
   { name: "Montagem Pixel Estelar 1.0", url: "https://dl.dropboxusercontent.com/scl/fi/2wspm9tkmjmhb6fgvcxq5/MPE.mp3?rlkey=5w81zb4vif64ur33a39nb1wqo&st=75qrgzog&dl=0" },
   { name: "DIA DELICIA", url: "https://dl.dropboxusercontent.com/scl/fi/f8f4oiyzqg9meyru7zby2/DD.mp3?rlkey=3xn6k1hckclt4573iumwlo8bt&st=r12uir9u&dl=0" },
-  { name: "BEST SONG EVER!! 1 HOUR", url: "https://dl.dropboxusercontent.com/scl/fi/d1q43g5ww2i3aksimo4jx/BSE.mp3?rlkey=u2z6r571bpwez5v8tbpuuco7y&st=tm8bmelo&dl=0" }
+  { name: "BEST SONG EVER!! 1 HOUR", url: "https://dl.dropboxusercontent.com/scl/fi/d1q43g5ww2i3aksimo4jx/BSE.mp3?rlkey=u2z6r571bpwez5v8tbpuuco7y&st=tm8bmelo&dl=0" },
+  { name: "Tralalero Tralala Phonk", url: "https://dl.dropboxusercontent.com/scl/fi/jtg64urckrxd10h1ppeq3/TT.mp3?rlkey=j3g4scdls4qokrifld61rfka2&st=v0jsg3i8&dl=0" },
+  { name: "Montagem Xonada", url: "https://dl.dropboxusercontent.com/scl/fi/h56x1jk8ntpsd76v7yg68/MX.mp3?rlkey=zs43zzw6e23y1f2l92jfpg6qu&st=2qwi6eyt&dl=0" },
+  { name: "MIX OF POPULAR PHONKS 2025", url: "https://dl.dropboxusercontent.com/scl/fi/q874flszuzonzqhq100mz/MIX.mp3?rlkey=vukxw34xivb1d2hhh40ajh3n7&st=hxux6e0e&dl=0" }
 ];
 
 const songListDiv = document.getElementById("songList");
+let isShuffle = false;
+let isRepeat = false;
 
 function formatTime(seconds) {
   const m = Math.floor(seconds / 60).toString().padStart(2,'0');
@@ -287,7 +299,6 @@ function renderSongs(filter = "") {
     const timeDisplay = songDiv.querySelector(".time");
     const volumeSlider = songDiv.querySelector(".volume-slider");
 
-    // Play/pause functionality
     playBtn.addEventListener("click", () => {
       document.querySelectorAll("#songList audio").forEach(a => {
         if(a !== audio){ 
@@ -316,26 +327,28 @@ function renderSongs(filter = "") {
         progressBar.style.width = "0%"; 
         timeDisplay.textContent = "00:00"; 
         songDiv.classList.remove("active");
+
+        if(isRepeat) { audio.play(); return; }
+        if(isShuffle) {
+          const nextIndex = Math.floor(Math.random() * filteredSongs.length);
+          songListDiv.querySelectorAll(".play-btn")[nextIndex].click();
+        }
       };
     });
 
-    // Progress update
     audio.ontimeupdate = () => {
       const percent = (audio.currentTime / audio.duration) * 100;
       progressBar.style.width = percent + "%";
       timeDisplay.textContent = formatTime(audio.currentTime) + " / " + formatTime(audio.duration);
     };
 
-    // Clickable progress bar
     progressContainer.addEventListener("click", (e) => {
       const rect = progressContainer.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
       const width = rect.width;
-      const percent = clickX / width;
-      audio.currentTime = percent * audio.duration;
+      audio.currentTime = (clickX / width) * audio.duration;
     });
 
-    // Volume slider
     volumeSlider.addEventListener("input", () => {
       audio.volume = volumeSlider.value;
     });
@@ -348,9 +361,19 @@ function renderSongs(filter = "") {
 renderSongs();
 
 // Search input
-const searchInput = document.getElementById("musicSearch");
-searchInput.addEventListener("input", () => {
-  renderSongs(searchInput.value);
+document.getElementById("musicSearch").addEventListener("input", (e) => {
+  renderSongs(e.target.value);
+});
+
+// Shuffle & Repeat Buttons
+document.getElementById("shuffleBtn").addEventListener("click", () => {
+  isShuffle = !isShuffle;
+  document.getElementById("shuffleBtn").style.background = isShuffle ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)";
+});
+
+document.getElementById("repeatBtn").addEventListener("click", () => {
+  isRepeat = !isRepeat;
+  document.getElementById("repeatBtn").style.background = isRepeat ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)";
 });
 </script>
 </body>
